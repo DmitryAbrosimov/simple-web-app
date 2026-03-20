@@ -259,16 +259,16 @@ CMD ["nginx", "-g", "daemon off;"]
 ```bash
 services:
   nginx:
+    environment:
+      - FORWARDABLE_HOST_PORT="${FORWARDABLE_HOST_PORT}"
+      - EXPOSE_NGINX_PORT="${EXPOSE_NGINX_PORT}"
+      - EXPOSE_BACKEND_PORT="${EXPOSE_BACKEND_PORT}"
+      - NGINX_ENVSUBST_FILTER="EXPOSE_BACKEND_PORT EXPOSE_NGINX_PORT"
     container_name: nginx-container
     build:
       context: ./nginx
       args:
         - EXPOSE_NGINX_PORT=${EXPOSE_NGINX_PORT}
-    environment:
-      - FORWARDABLE_HOST_PORT=${FORWARDABLE_HOST_PORT}
-      - EXPOSE_NGINX_PORT=${EXPOSE_NGINX_PORT}
-      - EXPOSE_BACKEND_PORT=${EXPOSE_BACKEND_PORT}
-      - NGINX_ENVSUBST_FILTER=EXPOSE_BACKEND_PORT EXPOSE_NGINX_PORT
     networks:
       - backend-net
     ports:                                  
@@ -295,15 +295,15 @@ services:
         condition: service_healthy
 
   backend:
+    environment:
+      - EXPOSE_BACKEND_PORT="${EXPOSE_BACKEND_PORT}"
+      - BACKEND_WORKDIR="${BACKEND_WORKDIR}"
     container_name: backend-container
     build:
       context: ./backend
       args:
         - EXPOSE_BACKEND_PORT=${EXPOSE_BACKEND_PORT}
         - BACKEND_WORKDIR=${BACKEND_WORKDIR}
-    environment:
-      - EXPOSE_BACKEND_PORT=${EXPOSE_BACKEND_PORT}
-      - BACKEND_WORKDIR=${BACKEND_WORKDIR}
     networks:
       - backend-net
     # --- Hardening ---
