@@ -1,0 +1,68 @@
+services:
+  nginx:
+    environment:
+      - FORWARDABLE_HOST_PORT="${FORWARDABLE_HOST_PORT}"
+      - EXPOSE_NGINX_PORT="${EXPOSE_NGINX_PORT}"
+      - EXPOSE_BACKEND_PORT="${EXPOSE_BACKEND_PORT}"
+      - NGINX_ENVSUBST_FILTER="EXPOSE_BACKEND_PORT EXPOSE_NGINX_PORT"
+    container_name: nginx-container
+    build:
+      context: ./nginx
+      args:
+        - EXPOSE_NGINX_PORT=${EXPOSE_NGINX_PORT}
+    networks:
+      - backend-net
+    ports:                                  
+      - "${FORWARDABLE_HOST_PORT}:${EXPOSE_NGINX_PORT}"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/templates/default.conf.template:ro
+    #- Hardening -------
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+    #-------------------
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  backend:
+    environment:
+      - EXPOSE_BACKEND_PORT="${EXPOSE_BACKEND_PORT}"
+      - BACKEND_WORKDIR="${BACKEND_WORKDIR}"
+    container_name: backend-container
+    build:
+      context: ./backend
+      args:
+        - EXPOSE_BACKEND_PORT=${EXPOSE_BACKEND_PORT}
+        - BACKEND_WORKDIR=${BACKEND_WORKDIR}
+    networks:
+      - backend-net
+    #- Hardening -------
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    #-------------------
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${EXPOSE_BACKEND_PORT}/health')"]
+      interval: 3s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+networks:
+  backend-net:
+    driver: bridge
